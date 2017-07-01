@@ -5,27 +5,22 @@
 # GraceNET v0.0
 #
 # Predict future anomolies based soley on the past 12 months of
-# GRACE anomolies.
+# GRACE anomolies. This file generates training and testing data 
+# saving both to json files
 #
 ##
 
-# Multi-Layer Perceptron Regression system. 
-# See http://scikit-learn.org/stable/modules/generated/sklearn.neural_network.MLPRegressor.html
-from sklearn.neural_network import MLPRegressor
-import sys
 import random
-import math
-from matplotlib import pyplot as plt
-import numpy as np
 import csv
 import glob
+import json
 
 data_dir = "/home/vince/Groundwater/NeuralNet/data/grace/"
 
 
-def get_training_data(num_examples):
+def get_data(num_examples):
     """
-    Get training data from plaintext files.
+    Get training/testing data from plaintext files.
     Return X, y, where X is the 12d previous months input
     and y is the (1d) anomoly.
     """
@@ -33,6 +28,7 @@ def get_training_data(num_examples):
     y = []
 
     for i in range(num_examples):
+        print("--> Generating sample %s of %s" % (i, num_examples))
         # get a good anomoly value
         pixel, year, month, day = random_valid_pixel()
         y.append(get_anomoly(pixel, year, month, day))
@@ -45,11 +41,9 @@ def get_training_data(num_examples):
             anom = get_anomoly(pixel, ly, lm, ld)
             prev.append(anom)
 
-
         X.append(prev)
-    print(y)
-    print(X)
 
+    return (X, y)
 
 def get_prev_entry(year, month, day):
     """
@@ -131,12 +125,11 @@ def random_valid_pixel():
         if not exists(pixel, y, m, d):
             # one of the previous months doesn't have our given pixel
             # So do we give up? No. We try again
-            print("Found invalid pixel. Trying again")
+            #print("Found invalid pixel. Trying again")
             return random_valid_pixel()
 
     return (pixel, year, month, day)
 
-    
 def exists(pixel, year, month, day):
     """
     Check if a given pixel for a given date exists.
@@ -155,34 +148,25 @@ def exists(pixel, year, month, day):
     except:  # if the file can't be opened, it's probably a bad date
         return False
 
-
-
-def old():
-    """wrapping old stuff in a function for now"""
-
-    # Test data
-    xx = np.arange(0,x_range,0.1)
-    yy = [math.sin(i) for i in xx]
-
-    # create the neural network
-    print("Creating the network")
-    rgr = MLPRegressor(solver='lbfgs', alpha=1e-5, activation="tanh",
-                        hidden_layer_sizes=(5, 2), random_state=1)
-
-    # train the network
-    print("Training the network")
-    rgr.fit(X.reshape(-1,1), y)    # need to reshape like this if using only 1d input
-
-    # predict using the network
-    print("Running the network on test data")
-    pred = rgr.predict(xx.reshape(-1,1))
-
-    print("Plotting")
-    plt.plot(X, y, '+g')
-    plt.plot(xx,yy)
-    plt.plot(xx, pred, '-r')
-    plt.show()
-
-
 if __name__=="__main__":
-    get_training_data(3)
+    n_train = 100
+    n_test = 20
+
+    X, y = get_data(n_train+n_test)
+
+    # Separate training and test sets
+    X_train = X[0:n_train]
+    y_train = y[0:n_train]
+    X_test = X[n_train:]
+    y_test = y[n_train:]
+
+    print("\n===> Saving Data to json")
+    # save training data in json format
+    train_dct = {"y":y_train, "X":X_train}
+    with open('training_data.json', 'w') as f:
+        json.dump(train_dct, f, indent=2)
+
+    # save testing data in json format
+    test_dct = {"y":y_test, "X":X_test}
+    with open('testing_data.json', 'w') as f:
+        json.dump(test_dct, f, indent=2)
