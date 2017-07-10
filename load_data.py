@@ -149,8 +149,8 @@ def exists(pixel, year, month, day):
         return False
 
 if __name__=="__main__":
-    n_train = 100
-    n_test = 20
+    n_train = 1000
+    n_test = 100
 
     X, y = get_data(n_train+n_test)
 

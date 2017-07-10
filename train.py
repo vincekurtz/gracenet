@@ -38,9 +38,9 @@ def create_and_train(X, y):
     """
     print("===> Creating Network")
     net = MLPRegressor(
-            solver='lbfgs',
+            solver='adam',
             alpha=1e-5,
-            activation='tanh',
+            activation='logistic',
             hidden_layer_sizes=(5,2),
             random_state=1)
 

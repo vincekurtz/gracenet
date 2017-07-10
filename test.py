@@ -15,6 +15,17 @@
 from sklearn.neural_network import MLPRegressor
 from sklearn.externals import joblib
 from train import load_data
+import matplotlib.pyplot as plt
+
+def plot_stuff(x_example, y_example, predicted):
+    """
+    Plot a particular data point. Assume that x_example
+    contains only the points leading up to y_example.
+    """
+    plt.plot(range(12), x_example)
+    plt.plot(12, y_example, 'og')
+    plt.plot(12, predicted, 'xr')
+    plt.show()
 
 if __name__=="__main__":
     # load testing data
@@ -30,6 +41,9 @@ if __name__=="__main__":
     print(pred)
     print("")
     print(r2)
+
+    #for i in range(2):
+    #    plot_stuff(X[i],y[i],pred[i])
 
     
 
