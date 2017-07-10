@@ -4,7 +4,7 @@
 #
 # GraceNET v0.0
 #
-# Predict future anomolies based soley on the past 12 months of
+# Predict future anomolies based soley on the past 24 months of
 # GRACE anomolies. This file generates training and testing data 
 # saving both to json files
 #
@@ -21,7 +21,7 @@ data_dir = "/home/vince/Groundwater/NeuralNet/data/grace/"
 def get_data(num_examples):
     """
     Get training/testing data from plaintext files.
-    Return X, y, where X is the 12d previous months input
+    Return X, y, where X is the 24d previous months input
     and y is the (1d) anomoly.
     """
     X = []
@@ -33,10 +33,10 @@ def get_data(num_examples):
         pixel, year, month, day = random_valid_pixel()
         y.append(get_anomoly(pixel, year, month, day))
 
-        # get all the previous 12 months anomolies for that pixel
+        # get all the previous 24 months anomolies for that pixel
         prev = []
         ly, lm, ld = (year, month, day)   # last year month and day
-        for j in range(12):
+        for j in range(24):
             ly,lm,ld = get_prev_entry(ly,lm,ld)
             anom = get_anomoly(pixel, ly, lm, ld)
             prev.append(anom)
@@ -87,13 +87,13 @@ def random_valid_pixel():
     Randomly select a pixel that will yield valid training data.
     This means that the given pixel
         1. Must exist for the given date
-        2. Must exist in the previous 12 months
+        2. Must exist in the previous 24 months
 
     Return a tuple of pixel, year, month, day
     """
     files = glob.glob(data_dir + "GRCTellus.JPL*")
     files.sort()   # sorting alphabetically is enough b/c nice naming scheme!
-    files = files[12:]    # remove the first 12 months since there won't be enough data before these
+    files = files[24:]    # remove the first 24 months since there won't be enough data before these
 
     startfile = files[random.randint(0,len(files)-1)]  # choose a random month
 
@@ -118,9 +118,9 @@ def random_valid_pixel():
     month = int(yyyymmdd[4:6])
     day = int(yyyymmdd[6:8])
 
-    # make sure that pixel exists for the previous 12 months
+    # make sure that pixel exists for the previous 24 months
     y, m, d = (year, month, day)
-    for i in range(12):
+    for i in range(24):
         y, m, d = get_prev_entry(y, m, d)
         if not exists(pixel, y, m, d):
             # one of the previous months doesn't have our given pixel
@@ -149,8 +149,8 @@ def exists(pixel, year, month, day):
         return False
 
 if __name__=="__main__":
-    n_train = 1000
-    n_test = 100
+    n_train = 100
+    n_test = 10
 
     X, y = get_data(n_train+n_test)
 

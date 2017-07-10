@@ -16,27 +16,45 @@ from sklearn.neural_network import MLPRegressor
 from sklearn.externals import joblib
 from train import load_data
 import matplotlib.pyplot as plt
+from sin_approx import predict_next  # prediction based on sinusoid only
+from sklearn.metrics import r2_score
 
 def plot_stuff(x_example, y_example, predicted):
     """
     Plot a particular data point. Assume that x_example
     contains only the points leading up to y_example.
     """
-    plt.plot(range(12), x_example)
-    plt.plot(12, y_example, 'og')
-    plt.plot(12, predicted, 'xr')
+    plt.plot(range(22), x_example)
+    plt.plot(24, y_example, 'og')
+    plt.plot(24, predicted, 'xr')
     plt.show()
+
+def predict(x):
+    """
+    Return a prediction for the next value given 
+    a set of variables for a single point.
+    """
+    prev_grace = x   # later this will change since other variables will be included
+    sine_pred = predict_next(x)
+    return sine_pred
 
 if __name__=="__main__":
     # load testing data
     X, y = load_data("testing_data.json")
-    # load the network
-    rgr = joblib.load('parameters.pkl')
-    # predict on the network
-    pred = rgr.predict(X)
-    # get r^2 score
-    r2 = rgr.score(X, y)
 
+    pred = []
+    for x in X:
+        pred.append( predict(x) )
+
+    # load the network
+    #rgr = joblib.load('parameters.pkl')
+    # predict on the network
+    #pred = rgr.predict(X)
+    # get r^2 score
+    #r2 = rgr.score(X, y)
+
+    r2 = r2_score(y, pred)
+    
     print(y)
     print(pred)
     print("")

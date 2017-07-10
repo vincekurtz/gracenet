@@ -4,7 +4,7 @@
 #
 # GraceNET v0.0
 #
-# Predict future anomolies based soley on the past 12 months of
+# Predict future anomolies based soley on the past 24 months of
 # GRACE anomolies. This file creates and trains a neural network 
 # to predict future changes in GRACE based on past changes.
 #
