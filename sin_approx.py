@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 ##
 #
@@ -9,7 +9,7 @@
 import numpy as np
 from scipy.optimize import leastsq
 import pylab as plt
-from train import load_data
+#from train import load_data
 #from test import plot_stuff
 
 

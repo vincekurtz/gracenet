@@ -14,8 +14,11 @@ import random
 import csv
 import glob
 import json
+import datetime
+import numpy as np
+import matplotlib.pyplot as plt
 
-data_dir = "/home/vince/Groundwater/NeuralNet/data/grace/"
+data_dir = "/home/vince/Groundwater/NeuralNet/data/"
 
 
 def get_data(num_examples):
@@ -27,11 +30,18 @@ def get_data(num_examples):
     X = []
     y = []
 
+    pixel_list = []  # avoid repeating pixels
     for i in range(num_examples):
-        print("--> Generating sample %s of %s" % (i, num_examples))
-        # get a good anomoly value
-        pixel, year, month, day = random_valid_pixel()
-        y.append(get_anomoly(pixel, year, month, day))
+        print("--> Generating sample %s of %s" % (i+1, num_examples))
+        # get a good pixel
+        pixel, year, month, day = random_valid_pixel(pixel_list)
+        pixel_list.append(pixel)
+
+        # The target data: a GRACE anomoly
+        anom = get_anomoly(pixel, year, month, day)
+
+        # Now deal with input variables for this pixel
+        x = [] 
 
         # get all the previous 24 months anomolies for that pixel
         prev = []
@@ -40,8 +50,20 @@ def get_data(num_examples):
             ly,lm,ld = get_prev_entry(ly,lm,ld)
             anom = get_anomoly(pixel, ly, lm, ld)
             prev.append(anom)
+        x.append(prev)
 
-        X.append(prev)
+        # Other variables like vegetation, temperature, etc
+        other_vars = []
+        other_vars.append(get_veg_trend(pixel, year, month, day))
+        other_vars.append(get_temperature_trend(pixel, year, month, day))
+
+        x.append(other_vars)
+
+        if None not in other_vars:
+            # a None in other_vars would indicate that there is not enough data for 
+            # temperature or vegetation
+            X.append(x)
+            y.append(anom)
 
     return (X, y)
 
@@ -51,9 +73,9 @@ def get_prev_entry(year, month, day):
     that preceeds it. This function returns the year, month, and
     day that correspond to that month's data.
     """
-    files = glob.glob(data_dir + "GRCTellus.JPL*")
+    files = glob.glob(data_dir + "grace/GRCTellus.JPL*")
     files.sort()   # sorting alphabetically is enough b/c nice naming scheme!
-    this_name = data_dir + "GRCTellus.JPL.%04d%02d%02d.LND.RL05_1.DSTvSCS1411.txt" % (year, month, day)
+    this_name = data_dir + "grace/GRCTellus.JPL.%04d%02d%02d.LND.RL05_1.DSTvSCS1411.txt" % (year, month, day)
     for i in range(len(files)):
         if files[i] == this_name:
             fname = files[i-1]
@@ -72,7 +94,7 @@ def get_anomoly(pixel, year, month, day):
     pixel should be a (lon, lat) touple. 
     year, month, and day should be strings.
     """
-    fname = data_dir + "GRCTellus.JPL.%04d%02d%02d.LND.RL05_1.DSTvSCS1411.txt" % (year, month, day)
+    fname = data_dir + "grace/GRCTellus.JPL.%04d%02d%02d.LND.RL05_1.DSTvSCS1411.txt" % (year, month, day)
     lon = str(pixel[0])
     lat = str(pixel[1])
     with open(fname, 'r') as fh:
@@ -82,16 +104,151 @@ def get_anomoly(pixel, year, month, day):
                 return float(row[2])
     return None
 
-def random_valid_pixel():
+def get_veg_trend(pixel, year, month, day):
+    """
+    Return the 2 year vegetation trend for a given pixel
+    and date. The trend should be over the N months before
+    the given date.
+    
+    pixel should be a (lon, lat) touple. 
+    year, month, and day should be strings.
+    """
+    N = 60
+    day_of_year = datetime.datetime(int(year), int(month), int(day)).strftime("%j")
+    files = glob.glob(data_dir + "vegetation/MOD13C2_EVI*")
+    files.sort()   # sorting alphabetically is enough b/c nice naming scheme!
+
+    # find the vegetation data closest to the requested date
+    testf = data_dir + "vegetation/MOD13C2_EVI_%s_%s_monthly.csv" % (year, day_of_year)   # data for the day we'd really like
+    if (testf in files):
+        # this date is already exactly included!
+        startf = testf
+    else:
+        # we need to look back a bit to find the entry closest to but before
+        # the given date
+        lst = files + [testf]
+        lst.sort()
+        for i in range(len(lst)):
+            if lst[i] == testf:
+                startf = lst[i-1]
+
+    # get data files for the previous N months
+    fnames = []
+    for i in range(len(files)):
+        if files[i] == startf:
+            start = i
+    for j in range(N):
+        fnames.append(files[start-j])
+
+    # get data for this pixel from these previous months
+    lon = str(pixel[0])
+    lat = str(pixel[1])
+
+    evi = []
+    months = []
+    n = 0
+    for fname in fnames:
+        found = False
+        with open(fname, 'r') as fh:
+            reader = csv.reader(fh, delimiter=" ")
+            for row in reader:
+                if (row[0] == lon and row[1] == lat):   # check for matching pixel
+                    evi.append(float(row[2]))
+                    found = True
+        if found:
+            months.append(n)
+        n+=1
+
+    if len(evi) < 10:
+        print("no EVI data avilible for this pixel") 
+        return None
+
+    # now fit a linear regression of the form y = mx+b
+    x = np.array(months)
+    y = np.array(evi)
+    A = np.vstack([x, np.ones(len(x))]).T
+    slope, y_int = np.linalg.lstsq(A, y)[0]
+
+    return(slope)
+
+def get_temperature_trend(pixel, year, month, day):
+    """
+    Return the 2 year tempearature trend for a given pixel
+    and date. The trend should be over the N months before
+    the given date.
+    
+    pixel should be a (lon, lat) touple. 
+    year, month, and day should be strings.
+    """
+    N = 60
+    day_of_year = datetime.datetime(int(year), int(month), int(day)).strftime("%j")
+    files = glob.glob(data_dir + "temperature/MOD11C3_LST*")
+    files.sort()   # sorting alphabetically is enough b/c nice naming scheme!
+
+    # find the vegetation data closest to the requested date
+    testf = data_dir + "temperature/MOD11C3_LST_Day_CMG_%s_%s_monthly.csv" % (year, day_of_year)   # data for the day we'd really like
+    if (testf in files):
+        # this date is already exactly included!
+        startf = testf
+    else:
+        # we need to look back a bit to find the entry closest to but before
+        # the given date
+        lst = files + [testf]
+        lst.sort()
+        for i in range(len(lst)):
+            if lst[i] == testf:
+                startf = lst[i-1]
+
+    # get data files for the previous N months
+    fnames = []
+    for i in range(len(files)):
+        if files[i] == startf:
+            start = i
+    for j in range(N):
+        fnames.append(files[start-j])
+
+    # get data for this pixel from these previous months
+    lon = str(pixel[0])
+    lat = str(pixel[1])
+
+    temp = []
+    months = []
+    n = 0
+    for fname in fnames:
+        found = False
+        with open(fname, 'r') as fh:
+            reader = csv.reader(fh, delimiter=" ")
+            for row in reader:
+                if (row[0] == lon and row[1] == lat):   # check for matching pixel
+                    temp.append(float(row[2]))
+                    found = True
+        if found:
+            months.append(n)
+        n+=1
+
+    if len(temp) < 10:
+        print("no temperature data avilible for this pixel") 
+        return None
+
+    # now fit a linear regression of the form y = mx+b
+    x = np.array(months)
+    y = np.array(temp)
+    A = np.vstack([x, np.ones(len(x))]).T
+    slope, y_int = np.linalg.lstsq(A, y)[0]
+
+    return(slope)
+
+def random_valid_pixel(pixel_list):
     """
     Randomly select a pixel that will yield valid training data.
     This means that the given pixel
         1. Must exist for the given date
         2. Must exist in the previous 24 months
+        3. Must not be in pixel_list
 
     Return a tuple of pixel, year, month, day
     """
-    files = glob.glob(data_dir + "GRCTellus.JPL*")
+    files = glob.glob(data_dir + "grace/GRCTellus.JPL*")
     files.sort()   # sorting alphabetically is enough b/c nice naming scheme!
     files = files[24:]    # remove the first 24 months since there won't be enough data before these
 
@@ -101,8 +258,8 @@ def random_valid_pixel():
     with open(startfile) as f:
         for i, l in enumerate(f):
             pass
-    num_lines = i + 1
-    header_lines = 21
+    num_lines = i
+    header_lines = 22
     pixel_line = random.randint(header_lines, num_lines)
 
     # get the value of that pixel
@@ -112,6 +269,11 @@ def random_valid_pixel():
             if (i == pixel_line):
                 pixel = (float(row[0]), float(row[1]))
 
+    # make sure the pixel isn't already in our list
+    if pixel in pixel_list:
+        # this pixel is already in our list
+        #print("pixel already chosen. picking a new one")
+        return random_valid_pixel(pixel_list)
 
     yyyymmdd = startfile[-35:-27]  # looking backwards from the end in case data_dir changes
     year = int(yyyymmdd[0:4])
@@ -126,7 +288,7 @@ def random_valid_pixel():
             # one of the previous months doesn't have our given pixel
             # So do we give up? No. We try again
             #print("Found invalid pixel. Trying again")
-            return random_valid_pixel()
+            return random_valid_pixel(pixel_list)
 
     return (pixel, year, month, day)
 
@@ -135,7 +297,7 @@ def exists(pixel, year, month, day):
     Check if a given pixel for a given date exists.
     Return true or false.
     """
-    fname = data_dir + "GRCTellus.JPL.%04d%02d%02d.LND.RL05_1.DSTvSCS1411.txt" % (year, month, day)
+    fname = data_dir + "grace/GRCTellus.JPL.%04d%02d%02d.LND.RL05_1.DSTvSCS1411.txt" % (year, month, day)
     lon = str(pixel[0])
     lat = str(pixel[1])
     try:
@@ -148,8 +310,8 @@ def exists(pixel, year, month, day):
     except:  # if the file can't be opened, it's probably a bad date
         return False
 
-if __name__=="__main__":
-    n_train = 100
+def main():
+    n_train = 600
     n_test = 10
 
     X, y = get_data(n_train+n_test)
@@ -170,3 +332,7 @@ if __name__=="__main__":
     test_dct = {"y":y_test, "X":X_test}
     with open('testing_data.json', 'w') as f:
         json.dump(test_dct, f, indent=2)
+
+if __name__=="__main__":
+    main()
+    

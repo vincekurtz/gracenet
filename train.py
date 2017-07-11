@@ -15,6 +15,7 @@
 from sklearn.neural_network import MLPRegressor
 from sklearn.externals import joblib  # for saving parameters
 import json
+from sin_approx import get_sinusoid_params
 
 train_data = "/home/vince/Groundwater/NeuralNet/training_data.json"
 
@@ -49,10 +50,37 @@ def create_and_train(X, y):
 
     return net
 
+def fit_sines(prev_anomolies):
+    """
+    Calculate sinusoid parameters based on the previous anomolies. 
+    We'll use the slope from these to train the network.
+
+    returns a list of lists with the sine parameters
+        [[amplitude, phase, mean, slope], ...]
+    """
+    fits = []
+    for i in prev_anomolies:
+        fit = get_sinusoid_params(i)
+        fits.append(fit)
+    return fits
 
 if __name__=="__main__":
     X, y = load_data("training_data.json")
-    rgr = create_and_train(X, y)
+
+    # unpack the X variables
+    prev_anomolies = [X[i][0] for i in range(len(X))]
+    veg_trend = [X[i][1][0] for i in range(len(X))]
+    temp_trend = [X[i][1][1] for i in range(len(X))]
+
+    # these are the variables we want to train on
+    X_vars = [[veg_trend[i], temp_trend[i]] for i in range(len(X))]
+
+    # calculate sinusoid parameters based on the previous anomolies. 
+    # we'll use the slope from these to train the network
+    sine_params = fit_sines(prev_anomolies)
+    slopes = [i[3] for i in sine_params]  # the slope is the third parameter
+
+    rgr = create_and_train(X_vars, slopes)
 
     # save the weights/parameters
     joblib.dump(rgr, 'parameters.pkl')
