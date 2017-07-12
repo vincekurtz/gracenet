@@ -42,7 +42,7 @@ def create_and_train(X, y):
             solver='sgd',
             alpha=1e-5,
             activation='logistic',
-            hidden_layer_sizes=(5,2),
+            hidden_layer_sizes=(50,20),
             random_state=1)
 
     print("===> Training Network")
@@ -66,21 +66,20 @@ def fit_sines(prev_anomolies):
 
 if __name__=="__main__":
     X, y = load_data("training_data.json")
+    N = 1000000  # number of samples to train on
+    print("Total samples availible = %s" % len(X))
+    print("Samples used = %s" % N)
 
-    # unpack the X variables
-    prev_anomolies = [X[i][0] for i in range(len(X))]
-    veg_trend = [X[i][1][0] for i in range(len(X))]
-    temp_trend = [X[i][1][1] for i in range(len(X))]
-
-    # these are the variables we want to train on
-    X_vars = [X[i][1] for i in range(len(X))]
+    # just take a subset of availible data for now
+    X_in = [X[i] for i in range(N)]
+    anomoly = [y[i] for i in range(N)]
 
     # calculate sinusoid parameters based on the previous anomolies. 
     # we'll use the slope from these to train the network
-    sine_params = fit_sines(prev_anomolies)
-    slopes = [i[3] for i in sine_params]  # the slope is the third parameter
+    #sine_params = fit_sines(prev_anomolies)
+    #slopes = [i[3] for i in sine_params]  # the slope is the third parameter
 
-    rgr = create_and_train(X_vars, slopes)
+    rgr = create_and_train(X_in, anomoly)
 
     # save the weights/parameters
     joblib.dump(rgr, 'parameters.pkl')

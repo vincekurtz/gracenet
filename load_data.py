@@ -44,23 +44,24 @@ def load_all_data():
 
     print("===> Loading GRACE data to memory")
     grace_data = get_data_dict('grace/GRC*', 'grace')
+    print(len(grace_data))
+
     #print("===> Loading IRRIGATION data to memory")
     #irrigation_data = get_data_dict('irrigation/irrigation*', 'irr')
     #print("===> Loading POPULATION data to memory")
     #population_data = get_data_dict('population/population*', 'pop')
-    print(len(grace_data))
 
     print("===> Loading PRECIPITATION data to memory")
-    #precipitation_data = get_data_dict('precipitation/precipitation*', 'precip')
-    #print(len(precipitation_data))
+    precipitation_data = get_data_dict('precipitation/precipitation*', 'precip')
+    print(len(precipitation_data))
 
     print("===> Loading TEMPERATURE data to memory")
     temperature_data = get_data_dict('temperature/MOD11C3_LST*', 'temp')
     print(len(temperature_data))
 
     print("===> Loading VEGETATION data to memory")
-    #vegetation_data = get_data_dict('vegetation/MOD13C2_EVI_*', 'veg')
-    #print(len(vegetation_data))
+    vegetation_data = get_data_dict('vegetation/MOD13C2_EVI_*', 'veg')
+    print(len(vegetation_data))
 
 def get_data():
     """
@@ -79,14 +80,14 @@ def get_data():
                 grace = grace_data[date][pixel]
 
                 # other varialbes --> input
-                #precip = precipitation_data[date][pixel]
-                tdate = nearby_valid_date(date, temperature_data)
-                temp = temperature_data[tdate][pixel]
-                #veg = vegetation_data[date][pixel]
-                #lat = pixel[1]
+                precip = precipitation_data[date][pixel]
+                temp = temperature_data[date][pixel]
+                veg = vegetation_data[date][pixel]
+                lat = pixel[1]
+                lon = pixel[0]
 
                 # Add to the datasets!
-                X.append([temp])
+                X.append([precip, temp, veg, lat, lon])
                 y.append(grace)
 
             except KeyError:
@@ -156,7 +157,7 @@ def get_data_dict(fpattern, fformat):
             year = int(m.group(1))
             day_of_year = int(m.group(2))
             date = datetime.datetime(year, 1, 1) + datetime.timedelta(day_of_year-1)
-            return (date.year, date.month, date.day)
+            return (date.year, date.month)  # only use year and month since this is monthly data
     elif fformat == 'temp':
         # temperature
         def get_date(fname):
@@ -165,7 +166,7 @@ def get_data_dict(fpattern, fformat):
             year = int(m.group(1))
             day_of_year = int(m.group(2))
             date = datetime.datetime(year, 1, 1) + datetime.timedelta(day_of_year-1)
-            return (date.year, date.month, date.day)
+            return (date.year, date.month)
     elif fformat == 'precip':
         # precipitation
         def get_date(fname):
@@ -176,21 +177,21 @@ def get_data_dict(fpattern, fformat):
             rem = decidate - year
             base = datetime.datetime(year, 1, 1)
             date = base + datetime.timedelta(seconds=(base.replace(year=base.year + 1) - base).total_seconds() * rem)
-            return (date.year, date.month, date.day)
+            return (date.year, date.month)
     elif fformat == 'pop':
         # population
         def get_date(fname):
             regex = r'population_density_([0-9]*)_regridded.txt'
             m = re.search(regex, fname)
             year = int(m.group(1))
-            return (year, 1, 1)   # we only have population data on the year
+            return (year, 1)   # we only have population data on the year
     elif fformat == 'irr':
         # irritation
         def get_date(fname):
             regex = r'irrigation_pct_([0-9]*).csv'
             m = re.search(regex, fname)
             year = int(m.group(1))
-            return (year, 1, 1) 
+            return (year, 1) 
     elif fformat == 'grace':
         # grace anomoly data
         def get_date(fname):
@@ -200,7 +201,7 @@ def get_data_dict(fpattern, fformat):
             year = int(datestring[0:4])
             month = int(datestring[4:6])
             day = int(datestring[6:8])
-            return (year, month, day) 
+            return (year, month) 
 
     else:
         print("ERROR: unrecognized file format %s" % fformat)

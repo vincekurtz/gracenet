@@ -52,27 +52,21 @@ if __name__=="__main__":
     X, y = load_data("training_data.json")
 
     print("===> Plotting data")
-    N = 300  # numper of samples to deal with for now
+    N = 8000  # numper of samples to deal with for now
     precip = [X[i][0] for i in range(N)]
-    #temp = [X[i][1] for i in range(N)]
-    #veg = [X[i][2] for i in range(N)]
-    #lat = [X[i][3] for i in range(N)]
+    temp = [X[i][1] for i in range(N)]
+    veg = [X[i][2] for i in range(N)]
+    lat = [X[i][3] for i in range(N)]
     anomoly = [y[i] for i in range(N)]
 
-    scatterplot(precip, anomoly)
+    X_vars = [X[i] for i in range(N)]
+    #scatterplot(lat, anomoly)
 
-    #pred = []
-    #for x in X:
-    #    pred.append( predict(x) )
-
-    ## load the network
-    #rgr = joblib.load('parameters.pkl')
-    ## predict on the network
-    #pred = rgr.predict(X_vars)
-    ## get r^2 score
-    #r2 = r2_score(y, pred)
+    # load the network
+    rgr = joblib.load('parameters.pkl')
+    # predict on the network
+    pred = rgr.predict(X_vars)
+    # get r^2 score
+    r2 = r2_score(anomoly, pred)
     
-    #print(y)
-    #print(pred)
-    #print("")
-    #print(r2)
+    print(r2)
