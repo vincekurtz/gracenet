@@ -44,66 +44,70 @@ def load_all_data():
 
     print("===> Loading GRACE data to memory")
     grace_data = get_data_dict('grace/GRC*', 'grace')
-    print("===> Loading IRRIGATION data to memory")
-    irrigation_data = get_data_dict('grace/GRC*', 'grace')
-    print("===> Loading POPULATION data to memory")
-    population_data = get_data_dict('grace/GRC*', 'grace')
-    print("===> Loading PRECIPITATION data to memory")
-    precipitation_data = get_data_dict('grace/GRC*', 'grace')
-    print("===> Loading TEMPERATURE data to memory")
-    temperature_data = get_data_dict('grace/GRC*', 'grace')
-    print("===> Loading VEGETATION data to memory")
-    vegetation_data = get_data_dict('grace/GRC*', 'grace')
+    #print("===> Loading IRRIGATION data to memory")
+    #irrigation_data = get_data_dict('irrigation/irrigation*', 'irr')
+    #print("===> Loading POPULATION data to memory")
+    #population_data = get_data_dict('population/population*', 'pop')
+    print(len(grace_data))
 
-def get_data(num_examples):
+    print("===> Loading PRECIPITATION data to memory")
+    #precipitation_data = get_data_dict('precipitation/precipitation*', 'precip')
+    #print(len(precipitation_data))
+
+    print("===> Loading TEMPERATURE data to memory")
+    temperature_data = get_data_dict('temperature/MOD11C3_LST*', 'temp')
+    print(len(temperature_data))
+
+    print("===> Loading VEGETATION data to memory")
+    #vegetation_data = get_data_dict('vegetation/MOD13C2_EVI_*', 'veg')
+    #print(len(vegetation_data))
+
+def get_data():
     """
     Get training/testing data from plaintext files.
-    Return X, y, where X is the 24d previous months input
-    and y is the (1d) anomoly.
+    Return X, y, where y is the GRACE anomoly and 
+    X is the data we'll use to derive the anomoly.
     """
     X = []
     y = []
 
-    pixel_list = []  # avoid repeating pixels
-    for i in range(num_examples):
-        print("--> Generating sample %s of %s" % (i+1, num_examples))
-        # get a good pixel
-        pixel, year, month, day = random_valid_pixel(pixel_list)
-        pixel_list.append(pixel)
+    print("===> Generating dataset")
+    for date in grace_data:
+        for pixel in grace_data[date]:
+            try:
+                # grace anomoly --> output
+                grace = grace_data[date][pixel]
 
-        # The target data: a GRACE anomoly
-        anom = get_anomoly(pixel, year, month, day)
+                # other varialbes --> input
+                #precip = precipitation_data[date][pixel]
+                tdate = nearby_valid_date(date, temperature_data)
+                temp = temperature_data[tdate][pixel]
+                #veg = vegetation_data[date][pixel]
+                #lat = pixel[1]
 
-        # Now deal with input variables for this pixel
-        x = [] 
+                # Add to the datasets!
+                X.append([temp])
+                y.append(grace)
 
-        # get all the previous 24 months anomolies for that pixel
-        prev = []
-        ly, lm, ld = (year, month, day)   # last year month and day
-        for j in range(24):
-            ly,lm,ld = get_prev_entry(ly,lm,ld)
-            anom = get_anomoly(pixel, ly, lm, ld)
-            prev.append(anom)
-        x.append(prev)
+            except KeyError:
+                # sometimes we won't have enough corresponding data on some of the
+                # extra variables. We'll just ignore that pixel/date pair in that case.
+                pass
 
-        # Other variables like vegetation, temperature, etc
-        other_vars = []
-        lat = pixel[1]  # lattitude
-        other_vars.append(get_veg_trend(pixel, year, month, day))  # vegetation trend
-        other_vars.append(get_temperature_trend(pixel, year, month, day))  # temperature trend
-        other_vars.append(lat)
-        #other_vars.append(get_irrigation_level(pixel))
-        other_vars.append(get_precip_trend(pixel, year, month, day))
-
-        x.append(other_vars)
-
-        if None not in other_vars:
-            # a None in other_vars would indicate that there is not enough data for 
-            # temperature or vegetation
-            X.append(x)
-            y.append(anom)
+    print(str(len(X)) + " datapoints")
+    print("input dimensions: " + str(len(X[0])))
 
     return (X, y)
+
+def nearby_valid_date(desired_date, dictionary):
+    """
+    Sometimes we get a date (year, month, day) that does not exactly exist in
+    another dictionary. We want to find a nearby date that does exist in that 
+    dictionary, but is part of the same month.
+    """
+    for valid_date in dictionary:
+        if (valid_date[0:2] ==  desired_date[0:2]):  # matching year and month
+            return valid_date
 
 def get_prev_entry(year, month, day):
     """
@@ -555,12 +559,10 @@ def toYearFraction(date):
     return date.year + fraction
 
 def main():
-    n_train = 600
-    n_test = 10
-
-    X, y = get_data(n_train+n_test)
+    X, y = get_data()
 
     # Separate training and test sets
+    test_pct = 10   # percentage of data to use in the test set
     X_train = X[0:-n_test]
     y_train = y[0:-n_test]
     X_test = X[-n_test:]
@@ -579,4 +581,10 @@ def main():
 
 if __name__=="__main__":
     load_all_data()
-    X, y = get_data(n_train+n_test)
+    X, y = get_data()
+
+    print("\n===> Saving Data to json")
+    # save training data in json format
+    train_dct = {"y":y, "X":X}
+    with open('training_data.json', 'w') as f:
+        json.dump(train_dct, f, indent=2)

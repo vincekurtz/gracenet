@@ -50,28 +50,27 @@ def scatterplot(x_var, y_var):
 if __name__=="__main__":
     # load testing data
     X, y = load_data("training_data.json")
-    prev_anomolies = [X[i][0] for i in range(len(X))]
-    veg_trend = [X[i][1][0] for i in range(len(X))]
-    temp_trend = [X[i][1][1] for i in range(len(X))]
-    lat = [X[i][1][2] for i in range(len(X))]
-    precip = [X[i][1][3] for i in range(len(X))]
 
-    # isolate input-output variables for the network
-    X_vars = [X[i][1] for i in range(len(X))]  # input vars
-    slopes = [i[3] for i in fit_sines(prev_anomolies)]   # output var
+    print("===> Plotting data")
+    N = 300  # numper of samples to deal with for now
+    precip = [X[i][0] for i in range(N)]
+    #temp = [X[i][1] for i in range(N)]
+    #veg = [X[i][2] for i in range(N)]
+    #lat = [X[i][3] for i in range(N)]
+    anomoly = [y[i] for i in range(N)]
 
-    scatterplot(precip, slopes)
+    scatterplot(precip, anomoly)
 
     #pred = []
     #for x in X:
     #    pred.append( predict(x) )
 
     ## load the network
-    rgr = joblib.load('parameters.pkl')
+    #rgr = joblib.load('parameters.pkl')
     ## predict on the network
-    pred = rgr.predict(X_vars)
+    #pred = rgr.predict(X_vars)
     ## get r^2 score
-    r2 = r2_score(y, pred)
+    #r2 = r2_score(y, pred)
     
     #print(y)
     #print(pred)
