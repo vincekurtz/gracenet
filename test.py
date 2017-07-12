@@ -53,25 +53,25 @@ if __name__=="__main__":
     prev_anomolies = [X[i][0] for i in range(len(X))]
     veg_trend = [X[i][1][0] for i in range(len(X))]
     temp_trend = [X[i][1][1] for i in range(len(X))]
+    lat = [X[i][1][2] for i in range(len(X))]
+    precip = [X[i][1][3] for i in range(len(X))]
 
-    # isolate variables we want to train the network with
-    X_vars = [[veg_trend[i], temp_trend[i]] for i in range(len(X))]
-    slopes = [i[3] for i in fit_sines(prev_anomolies)]
+    # isolate input-output variables for the network
+    X_vars = [X[i][1] for i in range(len(X))]  # input vars
+    slopes = [i[3] for i in fit_sines(prev_anomolies)]   # output var
 
-    scatterplot(veg_trend, slopes)
+    scatterplot(precip, slopes)
 
     #pred = []
     #for x in X:
     #    pred.append( predict(x) )
 
     ## load the network
-    #rgr = joblib.load('parameters.pkl')
+    rgr = joblib.load('parameters.pkl')
     ## predict on the network
-    #pred = rgr.predict(X_vars)
+    pred = rgr.predict(X_vars)
     ## get r^2 score
-    #r2 = rgr.score(X_vars, y)
-
-    #r2 = r2_score(y, pred)
+    r2 = r2_score(y, pred)
     
     #print(y)
     #print(pred)

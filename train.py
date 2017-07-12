@@ -39,7 +39,7 @@ def create_and_train(X, y):
     """
     print("===> Creating Network")
     net = MLPRegressor(
-            solver='adam',
+            solver='sgd',
             alpha=1e-5,
             activation='logistic',
             hidden_layer_sizes=(5,2),
@@ -73,7 +73,7 @@ if __name__=="__main__":
     temp_trend = [X[i][1][1] for i in range(len(X))]
 
     # these are the variables we want to train on
-    X_vars = [[veg_trend[i], temp_trend[i]] for i in range(len(X))]
+    X_vars = [X[i][1] for i in range(len(X))]
 
     # calculate sinusoid parameters based on the previous anomolies. 
     # we'll use the slope from these to train the network
