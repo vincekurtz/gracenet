@@ -44,7 +44,6 @@ def load_all_data():
 
     print("===> Loading GRACE data to memory")
     grace_data = get_data_dict('grace/GRC*', 'grace')
-    print(len(grace_data))
 
     #print("===> Loading IRRIGATION data to memory")
     #irrigation_data = get_data_dict('irrigation/irrigation*', 'irr')
@@ -53,52 +52,177 @@ def load_all_data():
 
     print("===> Loading PRECIPITATION data to memory")
     precipitation_data = get_data_dict('precipitation/precipitation*', 'precip')
-    print(len(precipitation_data))
 
     print("===> Loading TEMPERATURE data to memory")
     temperature_data = get_data_dict('temperature/MOD11C3_LST*', 'temp')
-    print(len(temperature_data))
 
     print("===> Loading VEGETATION data to memory")
     vegetation_data = get_data_dict('vegetation/MOD13C2_EVI_*', 'veg')
-    print(len(vegetation_data))
 
-def get_data():
+def get_regional_data():
     """
     Get training/testing data from plaintext files.
+    Only use data from the conententla US (ish)
     Return X, y, where y is the GRACE anomoly and 
     X is the data we'll use to derive the anomoly.
     """
     X = []
     y = []
 
+    print("===> Getting valid pixels")
+    dates = valid_date_list()
+    pixels = valid_pixel_list(dates)
+
     print("===> Generating dataset")
+
+    for date in dates:
+        anomolies = []
+        precips = []  # store precipitation, temperature, and vegetation data
+        temps = []    # we'll collapse these into 1d after we get all the pixels
+        vegs = []
+        for pixel in pixels:
+            lat = pixel[1]
+            lon = pixel[0]
+
+            # grace anomoly --> output
+            grace = grace_data[date][pixel]
+
+            # other varialbes --> input
+            precip = precipitation_data[date][pixel]
+            temp = temperature_data[date][pixel]
+            veg = vegetation_data[date][pixel]
+
+            # Add to the datasets!
+            anomolies.append(grace)
+            precips.append(precip)
+            precips.append(temp)
+            vegs.append(veg)
+
+        #print(len(anomolies))
+        #print(len(precips+temps+vegs)/3)
+
+    print(str(len(X)) + " datapoints")
+    print("input dimensions: " + str(len(X[0])))
+
+    return (X, y)
+
+def valid_date_list():
+    """
+    Return a list of dates that have data for grace, precipitation,
+    temperature, and vegetation.
+    """
+    dates = []
     for date in grace_data:
-        for pixel in grace_data[date]:
+        if (date in precipitation_data and date in temperature_data and date in vegetation_data):
+            dates.append(date)
+    return dates
+
+def valid_pixel_list(date_list):
+    """
+    Return a list of pixels in the contental US with precipitation, temperature, 
+    vegetation, and grace data for all the given dates.
+    """
+    possiblepixels = set()
+    badpixels = set()
+
+    # get all grace pixels in the continental US
+    for pixel in grace_data[(2002, 4)]:
+        lon = pixel[0]
+        lat = pixel[1]
+        inbounds = True #(lat > 26 and lat < 49 and lon > -125 and lon < -67)
+        if inbounds:
+            possiblepixels.add(pixel)
+
+    # now go back and filter out pixels that aren't in all the places
+    for date in date_list:
+        for pixel in possiblepixels:
+            in_all_sets = (pixel in grace_data[date])
+            if not in_all_sets:
+                badpixels.add(pixel)
+
+    valid_pixels = possiblepixels - badpixels  # pixels that are in possible but not in bad
+    print(len(possiblepixels))
+    print(len(badpixels))
+    print(len(valid_pixels))
+    return list(valid_pixels)
+
+def get_data():
+    """
+    Get training/testing data from plaintext files.
+    Return X, y, where y is the GRACE slope and 
+    X is the data we'll use to derive the GRACE data.
+    """
+    X = []
+    y = []
+
+    max_n=200
+
+    print("===> Generating dataset")
+    i = 0 # number of iterations
+    for date in grace_data:
+        x_row = []   # [precip1...precipN,Temp1...TempN,veg1...vegN] where N is the pixel
+        y_row = []   # [grace1...graceN]
+
+        p_row = []  # precipitation
+        t_row = []  # temperature
+        v_row = []  # vegetation
+
+        non_null = 0  # keep track of now many non-null values there are
+        for pixel in grace_data[(2004,1)]:   # use a consistent list of pixels
             try:
-                # grace anomoly --> output
-                grace = grace_data[date][pixel]
+                # grace slope --> output
+                grace = get_trend(pixel, date, grace_data)
 
                 # other varialbes --> input
-                precip = precipitation_data[date][pixel]
-                temp = temperature_data[date][pixel]
-                veg = vegetation_data[date][pixel]
-                lat = pixel[1]
-                lon = pixel[0]
+                precip = get_trend(pixel, date, precipitation_data)
+                temp = get_trend(pixel, date, temperature_data)
+                veg = get_trend(pixel, date, vegetation_data)
 
                 # Add to the datasets!
-                X.append([precip, temp, veg, lat, lon])
-                y.append(grace)
+                p_row.append(precip)
+                t_row.append(temp)
+                v_row.append(veg)
+                y_row.append(grace)
+
+                if grace:  # it's useless to include data without an output!
+                    non_null +=1
+
 
             except KeyError:
                 # sometimes we won't have enough corresponding data on some of the
                 # extra variables. We'll just ignore that pixel/date pair in that case.
                 pass
 
+        # double check sizes
+        #print(non_null)
+        #print(len(t_row), len(v_row), len(p_row), len(y_row))  # should all be the same
+    
+        # add to the master arrays of data
+        if non_null > 10000:  # only add if there are a decent number of GRACE points
+            x_row = p_row + t_row + v_row
+            X.append(x_row)
+            y.append(y_row)
+
+        n = len(X)
+        print("Date %s / %s | Sample %s / %s " % (i, len(grace_data), n, max_n))
+
+        if n > max_n:  # quit when we have enough samples
+            break
+
+        i+=1  # iteration counter
+
     print(str(len(X)) + " datapoints")
     print("input dimensions: " + str(len(X[0])))
 
     return (X, y)
+
+def double_data(x_row, y_row):
+    """
+    Create and return an artificial dataset by adding
+    gaussian noise to the given real data.
+    """
+    pass
+
 
 def nearby_valid_date(desired_date, dictionary):
     """
@@ -404,64 +528,73 @@ def get_precip_trend(pixel, year, month, day):
 
     return(slope)
 
-def get_temperature_trend(pixel, year, month, day):
+def get_trend(pixel, date, dataset):
+    """
+    Return a N month trend in the given dataset.
+    """
+    N = 24
+
+    vals = []
+    months = []
+    n = 0
+    bad_cnt = 0
+    # generate lists of month numbers and values
+    for i in range(N):
+        try:
+            vals.append(dataset[date][pixel])
+            months.append(n)
+        except KeyError:
+            bad_cnt += 1  # ignore when we can't get a value
+        n+=1
+        date = previous_month(date)
+
+    if bad_cnt > 15:
+        return 0   # ingore if there are too few datapoints
+
+    # now fit a linear regression
+    x = np.array(months)
+    y = np.array(vals)
+    A = np.vstack([x, np.ones(len(x))]).T
+    slope, y_int = np.linalg.lstsq(A, y)[0]
+
+    return(slope)
+
+
+def previous_month(date):
+    """
+    Return the previous month for a given date
+    """
+    year = date[0]
+    month = date[1]
+    new_year = year
+    new_month = month - 1
+
+    if new_month == 0:
+        new_year -= 1
+        new_month = 12
+
+    return (new_year, new_month)
+
+
+def get_temperature_trend(pixel, date):
     """
     Return the 2 year tempearature trend for a given pixel
     and date. The trend should be over the N months before
     the given date.
     
-    pixel should be a (lon, lat) touple. 
-    year, month, and day should be strings.
+    pixel should be a (lon, lat) touple. date should be a
+    (year, month) touple
     """
     N = 24
-    day_of_year = datetime.datetime(int(year), int(month), int(day)).strftime("%j")
-    files = glob.glob(data_dir + "temperature/MOD11C3_LST*")
-    files.sort()   # sorting alphabetically is enough b/c nice naming scheme!
-
-    # find the vegetation data closest to the requested date
-    testf = data_dir + "temperature/MOD11C3_LST_Day_CMG_%s_%s_monthly.csv" % (year, day_of_year)   # data for the day we'd really like
-    if (testf in files):
-        # this date is already exactly included!
-        startf = testf
-    else:
-        # we need to look back a bit to find the entry closest to but before
-        # the given date
-        lst = files + [testf]
-        lst.sort()
-        for i in range(len(lst)):
-            if lst[i] == testf:
-                startf = lst[i-1]
-
-    # get data files for the previous N months
-    fnames = []
-    for i in range(len(files)):
-        if files[i] == startf:
-            start = i
-    for j in range(N):
-        fnames.append(files[start-j])
 
     # get data for this pixel from these previous months
     lon = str(pixel[0])
     lat = str(pixel[1])
 
-    temp = []
-    months = []
-    n = 0
-    for fname in fnames:
-        found = False
-        with open(fname, 'r') as fh:
-            reader = csv.reader(fh, delimiter=" ")
-            for row in reader:
-                if (row[0] == lon and row[1] == lat):   # check for matching pixel
-                    temp.append(float(row[2]))
-                    found = True
-        if found:
-            months.append(n)
-        n+=1
+    this_temp = temperature_data[date][pixel]
+    print(this_temp)
 
-    if len(temp) < 10:
-        print("no temperature data avilible for this pixel") 
-        return None
+    return
 
     # now fit a linear regression of the form y = mx+b
     x = np.array(months)
@@ -563,7 +696,7 @@ def main():
     X, y = get_data()
 
     # Separate training and test sets
-    test_pct = 10   # percentage of data to use in the test set
+    n_test = 10   # number of data points
     X_train = X[0:-n_test]
     y_train = y[0:-n_test]
     X_test = X[-n_test:]
@@ -581,11 +714,6 @@ def main():
         json.dump(test_dct, f, indent=2)
 
 if __name__=="__main__":
-    load_all_data()
-    X, y = get_data()
+    load_all_data()  # do this first since many functions reference global vars
+    main()
 
-    print("\n===> Saving Data to json")
-    # save training data in json format
-    train_dct = {"y":y, "X":X}
-    with open('training_data.json', 'w') as f:
-        json.dump(train_dct, f, indent=2)
