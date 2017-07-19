@@ -48,7 +48,7 @@ def create_and_train(X, y, alpha=1e-5):
             solver='adam',
             alpha=alpha,
             activation='relu',
-            hidden_layer_sizes=(500,500),
+            hidden_layer_sizes=(2000,1000),
             random_state=1)
 
     net.fit(X, y)
@@ -84,6 +84,24 @@ def artificial_data(X, y):
     y_new = np.multiply(y, y_rand_perc)
 
     return (X_new, y_new)
+
+def gen_art_data(X, y, n):
+    """
+    Add artificial data to the given X and y datasets until
+    there are n samples. 
+    """
+    print("  Total samples availible = %s" % len(y))
+    target_samples = n   # how many training examples we'd like to have
+    original_X = X
+    original_y = y
+    while (len(y) < target_samples):
+        newx, newy = artificial_data(original_X, original_y)  # only base generated data on the originals
+        X = np.concatenate((X, newx))
+        y = np.concatenate((y, newy))
+        print("    generating artificial data ... %s / %s samples ready" % (len(y), target_samples))
+    print("  Total samples with artificial = %s" % len(y))
+
+    return (X, y)
 
 def choose_alpha():
     """
@@ -125,28 +143,22 @@ def main(save_data=True, alpha=1e-5):
     X = scaler.transform(X)
     X_test = scaler.transform(X_test)   # apply same transformation to test data
 
-    print("  Total samples availible = %s" % len(y))
-
     # generate artificial data
-    target_samples = 100   # how many training examples we'd like to have
-    original_X = X
-    original_y = y
-    while (len(y) < target_samples):
-        newx, newy = artificial_data(original_X, original_y)  # only base generated data on the originals
-        X = np.concatenate((X, newx))
-        y = np.concatenate((y, newy))
-        print("    generating artificial data ... %s / %s samples ready" % (len(y), target_samples))
-
-    print("  Total samples with artificial = %s" % len(y))
+    train_samples = 500
+    test_samples = 70
+    print("===> Generating artificial training data")
+    X, y = gen_art_data(X, y, train_samples)
+    print("===> Generating artificial testing data")
+    X_test, y_test = gen_art_data(X_test, y_test, test_samples)
 
     # dimensionality reduction/principle component analysis
-    print("===> Reducing Dimensions")
-    print("  old training dimensions (n_samples, n_features): (%s, %s) " % (X.shape[0], X.shape[1]))
-    pca = PCA()
-    pca.fit(X)
-    X = pca.transform(X)  # apply the dim. reduction to both training and test sets
-    X_test = pca.transform(X_test)
-    print("  new training dimensions (n_samples, n_features): (%s, %s) " % (X.shape[0], X.shape[1]))
+    #print("===> Reducing Dimensions")
+    #print("  old training dimensions (n_samples, n_features): (%s, %s) " % (X.shape[0], X.shape[1]))
+    #pca = PCA()
+    #pca.fit(X)
+    #X = pca.transform(X)  # apply the dim. reduction to both training and test sets
+    #X_test = pca.transform(X_test)
+    #print("  new training dimensions (n_samples, n_features): (%s, %s) " % (X.shape[0], X.shape[1]))
 
     print("===> Creating and Training Network")
     start_time = timeit.default_timer()   # time the training process
