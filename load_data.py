@@ -163,9 +163,13 @@ def get_data():
         x_row = []   # [precip1...precipN,Temp1...TempN,veg1...vegN] where N is the pixel
         y_row = []   # [grace1...graceN]
 
+        # add the varialbes: both trend and absolute value
         p_row = []  # precipitation
+        pavg_row = []
         t_row = []  # temperature
+        tavg_row = []
         v_row = []  # vegetation
+        vavg_row = []
 
         non_null = 0  # keep track of now many non-null values there are
         for pixel in grace_data[(2004,1)]:   # use a consistent list of pixels
@@ -177,11 +181,18 @@ def get_data():
                 precip = get_trend(pixel, date, precipitation_data)
                 temp = get_trend(pixel, date, temperature_data)
                 veg = get_trend(pixel, date, vegetation_data)
+                precipavg = get_average(pixel, date, precipitation_data)
+                vegavg = get_average(pixel, date, vegetation_data)
+                tempavg = get_average(pixel, date, temperature_data)
 
                 # Add to the datasets!
                 p_row.append(precip)
                 t_row.append(temp)
                 v_row.append(veg)
+                pavg_row.append(precipavg)
+                tavg_row.append(tempavg)
+                vavg_row.append(vegavg)
+
                 y_row.append(grace)
 
                 if grace:  # it's useless to include data without an output!
@@ -199,7 +210,7 @@ def get_data():
     
         # add to the master arrays of data
         if non_null > 10000:  # only add if there are a decent number of GRACE points
-            x_row = p_row + t_row + v_row
+            x_row = p_row + t_row + v_row + pavg_row + tavg_row + vavg_row
             X.append(x_row)
             y.append(y_row)
 
@@ -559,6 +570,27 @@ def get_trend(pixel, date, dataset):
 
     return(slope)
 
+def get_average(pixel, date, dataset):
+    """
+    Return an N month average in the given dataset.
+    """
+    N = 24
+
+    vals = []
+    bad_cnt = 0
+    # generate lists of month numbers and values
+    for i in range(N):
+        try:
+            vals.append(dataset[date][pixel])
+        except KeyError:
+            bad_cnt += 1  # ignore when we can't get a value
+        date = previous_month(date)
+
+    if bad_cnt > 15:
+        return 0   # ingore if there are too few datapoints
+
+    avg = np.average(vals)
+    return avg
 
 def previous_month(date):
     """

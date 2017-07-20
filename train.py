@@ -48,7 +48,11 @@ def create_and_train(X, y, alpha=1e-5):
             solver='adam',
             alpha=alpha,
             activation='relu',
+<<<<<<< Updated upstream
             hidden_layer_sizes=(2000,1000),
+=======
+            hidden_layer_sizes=(1000,1000),
+>>>>>>> Stashed changes
             random_state=1)
 
     net.fit(X, y)
@@ -151,14 +155,14 @@ def main(save_data=True, alpha=1e-5):
     print("===> Generating artificial testing data")
     X_test, y_test = gen_art_data(X_test, y_test, test_samples)
 
-    # dimensionality reduction/principle component analysis
-    #print("===> Reducing Dimensions")
-    #print("  old training dimensions (n_samples, n_features): (%s, %s) " % (X.shape[0], X.shape[1]))
-    #pca = PCA()
-    #pca.fit(X)
-    #X = pca.transform(X)  # apply the dim. reduction to both training and test sets
-    #X_test = pca.transform(X_test)
-    #print("  new training dimensions (n_samples, n_features): (%s, %s) " % (X.shape[0], X.shape[1]))
+     dimensionality reduction/principle component analysis
+    print("===> Reducing Dimensions")
+    print("  old training dimensions (n_samples, n_features): (%s, %s) " % (X.shape[0], X.shape[1]))
+    pca = PCA()
+    pca.fit(X)
+    X = pca.transform(X)  # apply the dim. reduction to both training and test sets
+    X_test = pca.transform(X_test)
+    print("  new training dimensions (n_samples, n_features): (%s, %s) " % (X.shape[0], X.shape[1]))
 
     print("===> Creating and Training Network")
     start_time = timeit.default_timer()   # time the training process
