@@ -155,7 +155,7 @@ def get_data():
     X = []
     y = []
 
-    max_n=20000
+    max_n=200000
 
     print("===> Generating dataset")
     i = 0 # number of iterations
@@ -163,31 +163,30 @@ def get_data():
         for pixel in grace_data[(2004,1)]:   # use a consistent list of pixels
             lat = pixel[1]
             lon = pixel[0]
-            if (lat < 55 and lat > 20 and lon < 120 and lon > 55):
-                # restrict to lower asia ish region
-                try:
-                    # grace slope --> output
-                    grace = get_trend(pixel, date, grace_data)
+            # restrict to lower asia ish region
+            try:
+                # grace slope --> output
+                grace = get_trend(pixel, date, grace_data)
 
-                    # other varialbes --> input
-                    # include both trend and average (over ~ 2 yrs)
-                    precip = get_trend(pixel, date, precipitation_data)
-                    temp = get_trend(pixel, date, temperature_data)
-                    veg = get_trend(pixel, date, vegetation_data)
-                    precipavg = get_average(pixel, date, precipitation_data)
-                    vegavg = get_average(pixel, date, vegetation_data)
-                    tempavg = get_average(pixel, date, temperature_data)
+                # other varialbes --> input
+                # include both trend and average (over ~ 2 yrs)
+                precip = get_trend(pixel, date, precipitation_data)
+                temp = get_trend(pixel, date, temperature_data)
+                veg = get_trend(pixel, date, vegetation_data)
+                precipavg = get_average(pixel, date, precipitation_data)
+                vegavg = get_average(pixel, date, vegetation_data)
+                tempavg = get_average(pixel, date, temperature_data)
 
-                    if grace:  # it's useless to include data without an output!
-                        # add to the master arrays of data
-                        X.append([precip, precipavg, temp, tempavg, veg, vegavg])
-                        y.append(grace)
+                if grace:  # it's useless to include data without an output!
+                    # add to the master arrays of data
+                    X.append([precip, precipavg, temp, tempavg, veg, vegavg])
+                    y.append(grace)
 
 
-                except KeyError:
-                    # sometimes we won't have enough corresponding data on some of the
-                    # extra variables. We'll just ignore that pixel/date pair in that case.
-                    pass
+            except KeyError:
+                # sometimes we won't have enough corresponding data on some of the
+                # extra variables. We'll just ignore that pixel/date pair in that case.
+                pass
     
 
         n = len(X)
@@ -700,6 +699,44 @@ def toYearFraction(date):
 
     return date.year + fraction
 
+def save_validation_data():
+    """
+    Save grace and input data in a csv file. 
+    format: 
+    LON LAT GRACESLOPE PRECIP TEMP VEG PRECIPAVG TEMPAVG VEGAVG
+    """
+    X = []  # input vars
+    y = [] # grace
+
+    with open('validation.csv', 'w') as fh: 
+        writer = csv.writer(fh, delimiter=' ')
+        writer.writerow(["HDR","long","lat","grace","precip","temp","veg","precipavg","tempavg","vegavg"])
+
+        date = (2016,1)
+        for pixel in grace_data[(2004,1)]:   # use a consistent list of pixels
+            lat = pixel[1]
+            lon = pixel[0]
+            try:
+                # grace slope --> output
+                grace = get_trend(pixel, date, grace_data)
+
+                # other varialbes --> input
+                # include both trend and average (over ~ 2 yrs)
+                precip = get_trend(pixel, date, precipitation_data)
+                temp = get_trend(pixel, date, temperature_data)
+                veg = get_trend(pixel, date, vegetation_data)
+                precipavg = get_average(pixel, date, precipitation_data)
+                vegavg = get_average(pixel, date, vegetation_data)
+                tempavg = get_average(pixel, date, temperature_data)
+
+                writer.writerow([lon, lat, grace, precip, temp, veg, precipavg, tempavg, vegavg])
+
+
+            except KeyError:
+                # sometimes we won't have enough corresponding data on some of the
+                # extra variables. We'll just ignore that pixel/date pair in that case.
+                pass
+
 def main():
     X, y = get_data()
 
@@ -723,5 +760,5 @@ def main():
 
 if __name__=="__main__":
     load_all_data()  # do this first since many functions reference global vars
-    main()
+    save_validation_data()
 

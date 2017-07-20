@@ -48,7 +48,7 @@ def create_and_train(X, y, alpha=1e-5):
             solver='adam',
             alpha=alpha,
             activation='relu',
-            hidden_layer_sizes=(500,500),
+            hidden_layer_sizes=(500),
             random_state=1)
 
     net.fit(X, y)
@@ -144,12 +144,12 @@ def main(save_data=True, alpha=1e-5):
     X_test = scaler.transform(X_test)   # apply same transformation to test data
 
     # generate artificial data
-    train_samples = 500
-    test_samples = 70
-    print("===> Generating artificial training data")
-    X, y = gen_art_data(X, y, train_samples)
-    print("===> Generating artificial testing data")
-    X_test, y_test = gen_art_data(X_test, y_test, test_samples)
+    #train_samples = 500
+    #test_samples = 70
+    #print("===> Generating artificial training data")
+    #X, y = gen_art_data(X, y, train_samples)
+    #print("===> Generating artificial testing data")
+    #X_test, y_test = gen_art_data(X_test, y_test, test_samples)
 
     # dimensionality reduction/principle component analysis
     #print("===> Reducing Dimensions")
