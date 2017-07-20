@@ -155,64 +155,40 @@ def get_data():
     X = []
     y = []
 
-    max_n=200
+    max_n=20000
 
     print("===> Generating dataset")
     i = 0 # number of iterations
     for date in grace_data:
-        x_row = []   # [precip1...precipN,Temp1...TempN,veg1...vegN] where N is the pixel
-        y_row = []   # [grace1...graceN]
-
-        # add the varialbes: both trend and absolute value
-        p_row = []  # precipitation
-        pavg_row = []
-        t_row = []  # temperature
-        tavg_row = []
-        v_row = []  # vegetation
-        vavg_row = []
-
-        non_null = 0  # keep track of now many non-null values there are
         for pixel in grace_data[(2004,1)]:   # use a consistent list of pixels
-            try:
-                # grace slope --> output
-                grace = get_trend(pixel, date, grace_data)
+            lat = pixel[1]
+            lon = pixel[0]
+            if (lat < 55 and lat > 20 and lon < 120 and lon > 55):
+                # restrict to lower asia ish region
+                try:
+                    # grace slope --> output
+                    grace = get_trend(pixel, date, grace_data)
 
-                # other varialbes --> input
-                precip = get_trend(pixel, date, precipitation_data)
-                temp = get_trend(pixel, date, temperature_data)
-                veg = get_trend(pixel, date, vegetation_data)
-                precipavg = get_average(pixel, date, precipitation_data)
-                vegavg = get_average(pixel, date, vegetation_data)
-                tempavg = get_average(pixel, date, temperature_data)
+                    # other varialbes --> input
+                    # include both trend and average (over ~ 2 yrs)
+                    precip = get_trend(pixel, date, precipitation_data)
+                    temp = get_trend(pixel, date, temperature_data)
+                    veg = get_trend(pixel, date, vegetation_data)
+                    precipavg = get_average(pixel, date, precipitation_data)
+                    vegavg = get_average(pixel, date, vegetation_data)
+                    tempavg = get_average(pixel, date, temperature_data)
 
-                # Add to the datasets!
-                p_row.append(precip)
-                t_row.append(temp)
-                v_row.append(veg)
-                pavg_row.append(precipavg)
-                tavg_row.append(tempavg)
-                vavg_row.append(vegavg)
-
-                y_row.append(grace)
-
-                if grace:  # it's useless to include data without an output!
-                    non_null +=1
+                    if grace:  # it's useless to include data without an output!
+                        # add to the master arrays of data
+                        X.append([precip, precipavg, temp, tempavg, veg, vegavg])
+                        y.append(grace)
 
 
-            except KeyError:
-                # sometimes we won't have enough corresponding data on some of the
-                # extra variables. We'll just ignore that pixel/date pair in that case.
-                pass
-
-        # double check sizes
-        #print(non_null)
-        #print(len(t_row), len(v_row), len(p_row), len(y_row))  # should all be the same
+                except KeyError:
+                    # sometimes we won't have enough corresponding data on some of the
+                    # extra variables. We'll just ignore that pixel/date pair in that case.
+                    pass
     
-        # add to the master arrays of data
-        if non_null > 10000:  # only add if there are a decent number of GRACE points
-            x_row = p_row + t_row + v_row + pavg_row + tavg_row + vavg_row
-            X.append(x_row)
-            y.append(y_row)
 
         n = len(X)
         print("Date %s / %s | Sample %s / %s " % (i, len(grace_data), n, max_n))
@@ -728,7 +704,7 @@ def main():
     X, y = get_data()
 
     # Separate training and test sets
-    n_test = 10   # number of data points
+    n_test = int(len(y)*0.10)   # 10% of the data for testing
     X_train = X[0:-n_test]
     y_train = y[0:-n_test]
     X_test = X[-n_test:]
