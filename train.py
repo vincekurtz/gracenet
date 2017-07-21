@@ -48,7 +48,7 @@ def create_and_train(X, y, alpha=1e-5):
             solver='adam',
             alpha=alpha,
             activation='relu',
-            hidden_layer_sizes=(500),
+            hidden_layer_sizes=(500,500),
             random_state=1)
 
     net.fit(X, y)
@@ -111,7 +111,7 @@ def choose_alpha():
     test = []
     train = []
 
-    alphas = [3e-3, 1e-2, 3e-2, 1e-1, 3e-1, 1, 3, 10]
+    alphas = [1e-2, 3e-2, 1e-1, 3e-1, 1]
     for alpha in alphas:
         print("")
         print(" ALPHA = %s" % alpha)
@@ -182,4 +182,5 @@ def main(save_data=True, alpha=1e-5):
     return (training_R, testing_R)
 
 if __name__=="__main__":
+    #main(alpha=0.1)
     choose_alpha()

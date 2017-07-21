@@ -179,7 +179,7 @@ def get_data():
 
                 if grace:  # it's useless to include data without an output!
                     # add to the master arrays of data
-                    X.append([precip, precipavg, temp, tempavg, veg, vegavg])
+                    X.append([precip, precipavg, temp, tempavg, veg, vegavg, lat])
                     y.append(grace)
 
 
@@ -760,5 +760,5 @@ def main():
 
 if __name__=="__main__":
     load_all_data()  # do this first since many functions reference global vars
-    save_validation_data()
+    main()
 

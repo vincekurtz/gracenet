@@ -19,7 +19,9 @@ import matplotlib.pyplot as plt
 from sin_approx import predict_next, get_sinusoid_params
 from sklearn.metrics import r2_score
 import numpy as np
-from load_data import data_in_date_range
+import csv
+from train import load_data
+from sklearn.preprocessing import StandardScaler
 
 def plot_stuff(x_example, y_example, predicted):
     """
@@ -61,23 +63,50 @@ def validate():
     tempavg = []
     precip = []
     precipavg = []
+    lat = []
+    latlon = []   # store coordinates
     with open('validation.csv', 'r') as fh:
         reader = csv.reader(fh, delimiter=' ')
         for row in reader:
             if row[0] != "HDR":  # ignore header
-                pass
+                lat.append(row[1])
+                # grace is row 2, but this is not part of the input
+                precip.append(row[3])
+                temp.append(row[4])
+                veg.append(row[5])
+                precipavg.append(row[6])
+                tempavg.append(row[7])
+                vegavg.append(row[8])
 
-            
-
+                latlon.append((row[0],row[1]))
 
     # load network
     net = joblib.load('parameters.pkl')
 
     # structure the input
+    X = np.asarray([precip, precipavg, temp, tempavg, veg, vegavg, lat])
+    X = X.transpose()
+
+    # do feature scaling
+    originalX, originalY = load_data("training_data.json")
+    scaler = StandardScaler()
+    scaler.fit(originalX)   # feature fit on the training data
+    X = scaler.transform(X)  # but transform this validation data
 
     # predict on the network
+    predicted = net.predict(X)
 
     # save the output to csv
+    print("saving preditions to file")
+    with open('network_predicted_2014-2016.csv', 'w') as fh:
+        writer = csv.writer(fh, delimiter=' ')
+        for i in range(len(predicted)):
+            predicted_slope = predicted[i]
+            lon = latlon[i][0]
+            lat = latlon[i][1]
+            writer.writerow([lon, lat, predicted_slope])
+
 
 
 if __name__=="__main__":
+    validate()
